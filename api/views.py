@@ -65,8 +65,7 @@ class StudentsViewSet(viewsets.ModelViewSet):
 	queryset = Students.objects.all()
 	serializer_class = StudentsSerializer
 
-class FileView(viewsets.ModelViewSet):
-	parser_classes = (MultiPartParser, FormParser)
+class FileViewSet(viewsets.ModelViewSet):
 	permission_classes = (IsAuthenticated,)
 	queryset = File.objects.all()
 	serializer_class = FileSerializer
@@ -75,14 +74,14 @@ class FileView(viewsets.ModelViewSet):
 # class ImageUploadForm(forms.Form):
 #     """Image upload form."""
 #     image = forms.ImageField()
-
-def FileView(request):
-    if request.method == 'POST' and request.FILES['file']:
-        myfiles = request.FILES['file']
-        fs = FileSystemStorage()
-        filename = fs.save(myfiles.name, myfiles)
-        uploaded_file_url = fs.url(filename)
-        return JsonResponse({uploaded_file_url : uploaded_file_url})
+#
+# def FileView(request):
+#     if request.method == 'POST' and request.FILES['file']:
+#         myfiles = request.FILES['file']
+#         fs = FileSystemStorage()
+#         filename = fs.save(myfiles.name, myfiles)
+#         uploaded_file_url = fs.url(filename)
+#         return JsonResponse({uploaded_file_url : uploaded_file_url})
 
 # define the path to the face detector and smile detector
 FACE_DETECTOR_PATH = "{base_path}/cascades/haarcascade_frontalface_default.xml".format(

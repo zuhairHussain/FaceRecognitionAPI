@@ -31,6 +31,7 @@ router.register(r'users', views.UserViewSet)
 router.register(r'groups', views.GroupViewSet)
 router.register(r'api/classes', views.ClassesViewSet)
 router.register(r'api/students', views.StudentsViewSet)
+router.register(r'upload', views.FileViewSet)
 
 # Wire up our API using automatic URL routing.
 # Additionally, we include login URLs for the browsable API.
@@ -38,7 +39,6 @@ urlpatterns = [
     url('admin/', admin.site.urls),
     url(r'^', include(router.urls)),
     url('recognize/', views.recognize),
-    url('upload/', views.FileView),
     url('train/', views.train),
     # url('new/', views.new),
     # url('users/', views.users),
