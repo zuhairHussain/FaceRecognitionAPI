@@ -201,10 +201,10 @@ def train(request):
 	# check to see if this is a POST request
 	if request.method == "POST":
 		# check to see if an image was uploaded
-		if request.POST.get("path", None) is not None and request.POST.get("user", None) is not None :
+		if request.POST.get("url", None) is not None and request.POST.get("user", None) is not None :
 
 			# grab the uploaded image
-			image = _grab_image(path=request.POST.get("path", None))
+			image = _grab_image(url=request.POST.get("url", None))
 			image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 			rects = detector.detectMultiScale(image, scaleFactor=1.1, minNeighbors=5,
 				minSize=(30, 30), flags=0)
@@ -245,7 +245,9 @@ def train(request):
 def _grab_image(path=None, base64_string=None, url=None):
 	# if the path is not None, then load the image from disk
 	if path is not None:
-		image = cv2.imread(path)
+		with open(path, 'rb') as f:
+			contents = f.read()
+		image = cv2.imread(contents)
 
 	# otherwise, the image does not reside on disk
 	else:
@@ -268,7 +270,7 @@ def _grab_image(path=None, base64_string=None, url=None):
 			image = np.fromstring(image, dtype=np.uint8)
 			print(image, '++++++++++')
 			image = cv2.imdecode(image, 0)
-			print(image, '==========')
+			print(image.shape, '==========')
 
 
 

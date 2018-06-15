@@ -18,5 +18,4 @@ class Students(models.Model):
 
 class File(models.Model):
   photo = models.ImageField(upload_to='')
-  remark = models.CharField(max_length=20)
   timestamp = models.DateTimeField(auto_now_add=True)

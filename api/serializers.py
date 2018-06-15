@@ -29,3 +29,9 @@ class FileSerializer(serializers.ModelSerializer):
     class Meta():
         model = File
         fields = '__all__'
+
+    def create(self, validated_data):
+        image=validated_data.pop('photo')
+        for img in image:
+            photo=File.objects.create(photo=img,**validated_data)
+        return photo
