@@ -4,30 +4,20 @@ from api.serializers import UserSerializer, GroupSerializer, ClassesSerializer, 
 from rest_framework.permissions import IsAdminUser, IsAuthenticated, DjangoModelPermissions
 from .models import Classes, Students, File
 from rest_framework.parsers import MultiPartParser, FormParser
-from rest_framework.views import APIView
-from django.core.files.storage import FileSystemStorage
 
-from django.shortcuts import render, redirect, render_to_response, HttpResponse
-from django.http import HttpResponse
-from django.views.generic import TemplateView,ListView
-from django.views.generic.edit import CreateView, UpdateView, DeleteView
-from django.urls import reverse_lazy
+
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
 from django.contrib.auth.models import User
 import base64
 from PIL import Image
-from io import StringIO
 import numpy as np
 import urllib.request
-import json
 import cv2
 import os
-import random
 import uuid
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework import status
-from rest_framework.response import Response
+import datetime
+import json
 
 class CreateFolder():
 
@@ -66,6 +56,7 @@ class StudentsViewSet(viewsets.ModelViewSet):
 	serializer_class = StudentsSerializer
 
 class FileViewSet(viewsets.ModelViewSet):
+	parser_classes = (MultiPartParser,)
 	permission_classes = (IsAuthenticated,)
 	queryset = File.objects.all()
 	serializer_class = FileSerializer
@@ -134,12 +125,29 @@ recognizer.train(images, np.array(labels))
 def recognize(request):
 	# initialize the data dictionary to be returned by the request
 	data = {}
+	data2 = {}
 	# check to see if this is a get request
 	if request.method == "POST":
+		body_unicode = request.body.decode('utf-8')
+		body = json.loads(body_unicode)
+
 		# check to see if an image was uploaded
-		if request.POST.get("imageBase64", None) is not None:
+		if body['imageBase64'] is not None and body['student_class'] is not None :
+
+			b64_image = body['imageBase64']  # key that is being used to send the data
+			imgdata = base64.b64decode(b64_image)
+			var = datetime.datetime.now().strftime(
+				"%d%m%Y%H%M%S")  # This will give unique values everytime. Values are based on current datetime
+			filename = "attendance_images/" + var + '.jpg'
+			with open(filename, 'wb') as f:
+				f.write(imgdata)
+			# return a JSON response
+			data2.update({"image": filename})
+			# return JsonResponse(data2)
+
+
 			# grab the uploaded image
-			image = _grab_image(base64_string=request.POST.get("imageBase64", None))
+			image = _grab_image(path=filename)
 
 		# otherwise, assume that a URL was passed in
 		else:
@@ -151,6 +159,7 @@ def recognize(request):
 				data["error"] = "No URL provided."
 				return JsonResponse(data)
 
+			print(url)
 			# load the image and convert
 			image = _grab_image(url=url)
 
@@ -179,14 +188,17 @@ def recognize(request):
 			smiling = False if len(smile) == 0 else True
 			print("==========================" , identity)
 			if identity > 0 :
-			   user = Students.objects.get(id=identity)
-			   user = {
-				"first_name" : user.first_name,
-				"last_name" : user.last_name,
-				"username" : user.username,
-				"email" : user.email,
-				"id" : user.id,
-			   }
+			   try:
+				   user = Students.objects.get(id=identity, student_class=body['student_class'])
+				   user = {
+					   "first_name": user.first_name,
+					   "last_name": user.last_name,
+					   "username": user.username,
+					   "email": user.email,
+					   "id": user.id,
+				   }
+			   except Students.DoesNotExist:
+				   user = ""
 			else :
 			   user = ""
 
@@ -198,19 +210,20 @@ def recognize(request):
 
 @csrf_exempt
 def train(request):
-	# check to see if this is a POST request
-	if request.method == "POST":
+	# check to see if this is a GET request
+	if request.method == "GET":
 		# check to see if an image was uploaded
-		if request.POST.get("url", None) is not None and request.POST.get("user", None) is not None :
+		if request.GET.get("url", None) is not None and request.GET.get("user", None) is not None :
+			print(request.GET.get("url", None))
 
 			# grab the uploaded image
-			image = _grab_image(url=request.POST.get("url", None))
+			image = _grab_image(url= request.GET.get("url", None))
 			image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 			rects = detector.detectMultiScale(image, scaleFactor=1.1, minNeighbors=5,
 				minSize=(30, 30), flags=0)
 
 			# Create Folder
-			training_folder = os.path.join(TRAINED_FACES_PATH, request.POST.get('user', None))
+			training_folder = os.path.join(TRAINED_FACES_PATH, request.GET.get('user', None))
 			if not os.path.exists(training_folder):
 				os.makedirs(training_folder)
 
@@ -220,7 +233,8 @@ def train(request):
 				return JsonResponse({"error" : "No faces detected"})
 			else :
 				x, y, w, h = rects[0]
-				cv2.imwrite( TRAINED_FACES_PATH + "/" +  str(request.POST.get("user", None)) + "/" + str(uuid.uuid4()) + ".jpg", image[y:h, x:w] );
+				cv2.imwrite( TRAINED_FACES_PATH + "/" +  str(request.GET.get("user", None)) + "/" + str(uuid.uuid4()) + ".jpg", image[y:h, x:w] );
+
 	return JsonResponse({"success" : True})
 
 # @api_view(['GET'])
@@ -245,9 +259,7 @@ def train(request):
 def _grab_image(path=None, base64_string=None, url=None):
 	# if the path is not None, then load the image from disk
 	if path is not None:
-		with open(path, 'rb') as f:
-			contents = f.read()
-		image = cv2.imread(contents)
+		image = cv2.imread(path)
 
 	# otherwise, the image does not reside on disk
 	else:
@@ -270,7 +282,6 @@ def _grab_image(path=None, base64_string=None, url=None):
 			image = np.fromstring(image, dtype=np.uint8)
 			print(image, '++++++++++')
 			image = cv2.imdecode(image, 0)
-			print(image.shape, '==========')
 
 
 
